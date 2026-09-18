@@ -17,7 +17,7 @@
             text-align: center;
             border-bottom: 2px dashed #00ffff;
             padding-bottom: 15px;
-            margin-bottom: 30px;
+            margin-bottom: 25px;
         }
         header .tag {
             font-size: 0.75rem;
@@ -33,6 +33,37 @@
             margin: 8px 0 0 0;
             color: #ffffff;
             text-shadow: 0 0 10px rgba(0,255,255,0.7);
+        }
+        /* Panel para subir fotos */
+        .panel-carga {
+            background-color: #111d28;
+            border: 2px dashed #00ffff;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            max-width: 600px;
+            margin: 0 auto 30px auto;
+            box-shadow: 0 0 15px rgba(0, 255, 255, 0.1);
+        }
+        .panel-carga input[type="file"] {
+            display: none;
+        }
+        .btn-subir {
+            background-color: #00ffff;
+            color: #070c10;
+            padding: 12px 25px;
+            font-family: 'Special Elite', cursive;
+            font-weight: bold;
+            font-size: 1rem;
+            cursor: pointer;
+            border-radius: 4px;
+            display: inline-block;
+            box-shadow: 0 0 10px rgba(0,255,255,0.3);
+            transition: all 0.3s ease;
+        }
+        .btn-subir:hover {
+            background-color: #ffffff;
+            box-shadow: 0 0 20px rgba(0,255,255,0.8);
         }
         .vidriera-grid {
             display: grid;
@@ -75,6 +106,7 @@
             font-size: 1rem;
             color: #ffffff;
             margin: 0 0 5px 0;
+            word-break: break-all;
         }
         .btn-descarga-mdw {
             background-color: #00ffff;
@@ -100,23 +132,28 @@
 
     <header>
         <div class="tag">POSTA DEL MILISEGUNDO — MDW 1001</div>
-        <h1>VIDRIERA DE ESTAMPIYA! DE TIEMPO</h1>
-        <p style="font-size: 0.85rem; color: #67e8f9; margin-top: 5px;">Explorá el archivo visual y descargá cada pieza con certificación atómica en vivo.</p>
+        <h1>VIDRIERA DE ESTAMPIYA DE TIEMPO</h1>
+        <p style="font-size: 0.85rem; color: #67e8f9; margin-top: 5px;">Subí tus fotos para verlas al instante y estamparlas con certificación atómica.</p>
     </header>
 
+    <!-- Botón interactivo para cargar fotos desde tu dispositivo -->
+    <div class="panel-carga">
+        <p style="margin-top: 0; font-size: 0.9rem; color: #a5f3fc;">Seleccioná una o varias imágenes de tu computadora o celular:</p>
+        <label class="btn-subir">
+            📁 CARGAR FOTOS A LA VIDRIERA
+            <input type="file" id="selector-archivos" accept="image/*" multiple onchange="manejarArchivos(event)">
+        </label>
+    </div>
+
     <main id="vidriera-container" class="vidriera-grid">
-        <div style="grid-column: 1 / -1; text-align: center; color: #00ffff; padding: 40px;">
-            Buscando piezas en la carpeta de GitHub...
+        <div style="grid-column: 1 / -1; text-align: center; color: #67e8f9; padding: 20px; font-style: italic;">
+            (Aún no hay fotos cargadas. Usá el botón de arriba para agregar las tuyas).
         </div>
     </main>
 
     <canvas id="canvas-sello" style="display:none;"></canvas>
 
     <script>
-        const pathArray = window.location.pathname.split('/');
-        const userOrOrg = window.location.hostname.split('.')[0]; 
-        const repoName = window.location.hostname.includes('github.io') ? pathArray[1] : '';
-        
         let geoUbicacionTexto = "MDW-GEO: 38.0000° S, 57.5500° W [MARDELWOOD]";
         if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition(
@@ -135,48 +172,29 @@
             return limpio.charAt(0).toUpperCase() + limpio.slice(1);
         }
 
-        async function cargarVidrieraAutomatica() {
+        function manejarArchivos(event) {
+            const archivos = event.target.files;
             const contenedor = document.getElementById('vidriera-container');
             
-            try {
-                let apiUrl = `https://api.github.com/repos/misterkong69-del/misterkong69-del.github.io/contents/`;
-                if (window.location.hostname.includes('github.io') && repoName && repoName !== '') {
-                    apiUrl = `https://api.github.com/repos/${userOrOrg}/${repoName}/contents/`;
-                }
+            if (archivos.length > 0 && contenedor.innerHTML.includes("Aún no hay fotos")) {
+                contenedor.innerHTML = ""; // Limpia el mensaje inicial si lo hubiera
+            }
 
-                apiUrl += `?t=${new Date().getTime()}`;
-
-                const respuesta = await fetch(apiUrl);
-                if (!respuesta.ok) throw new Error("No se pudo conectar con el repositorio.");
+            Array.from(archivos).forEach((archivo) => {
+                const lector = new FileReader();
                 
-                const archivos = await respuesta.json();
-                
-                const imagenes = archivos.filter(item => {
-                    if (item.type !== 'file') return false;
-                    const ext = item.name.split('.').pop().toLowerCase();
-                    return ['png', 'jpg', 'jpeg', 'webp'].includes(ext);
-                });
-
-                if (imagenes.length === 0) {
-                    contenedor.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; color: #ff5555; padding: 40px;">⚠️ No se encontraron imágenes en el repositorio.</div>';
-                    return;
-                }
-
-                contenedor.innerHTML = "";
-
-                imagenes.forEach((imgData) => {
-                    const tituloLindo = formatearTitulo(imgData.name);
+                lector.onload = function(e) {
+                    const urlImagenLocal = e.target.result;
+                    const tituloLindo = formatearTitulo(archivo.name);
                     const hashAleatorio = "MDW-" + Math.random().toString(36).substring(2, 8).toUpperCase() + "-2026";
                     
                     const tarjeta = document.createElement('div');
                     tarjeta.className = 'tarjeta-estampiya';
                     
-                    const urlImagenFresca = `${imgData.name}?v=${Math.random()}`;
-
                     tarjeta.innerHTML = `
                         <div>
                             <div class="estampiya-frame">
-                                <img src="${urlImagenFresca}" alt="${tituloLindo}" crossorigin="anonymous" class="img-estampa-ref">
+                                <img src="${urlImagenLocal}" alt="${tituloLindo}" crossorigin="anonymous" class="img-estampa-ref">
                             </div>
                             <div class="info-estampa">
                                 <h3>${tituloLindo}</h3>
@@ -189,12 +207,10 @@
                         </button>
                     `;
                     contenedor.appendChild(tarjeta);
-                });
-
-            } catch (error) {
-                console.error(error);
-                contenedor.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; color: #ff5555; padding: 40px;">⚠️ Error al cargar las imágenes automáticamente. Verificá la conexión.</div>';
-            }
+                }
+                
+                lector.readAsDataURL(archivo);
+            });
         }
 
         function descargarEstampiyaDeVidriera(btn) {
@@ -259,7 +275,7 @@
 
 
             // ==========================================
-            // 3. PLACA RECUADRO DE NEÓN INFERIOR (AUSPICIO: MIRADORES DEL BOSQUE)
+            // 3. PLACA RECUADRO DE NEÓN INFERIOR (MIRADORES DEL BOSQUE)
             // ==========================================
             ctx.save();
             const anchoPlaca = canvas.width - (100 * escala);
@@ -267,34 +283,27 @@
             const xPlaca = 50 * escala;
             const yPlaca = canvas.height - (110 * escala);
 
-            // Sombra y resplandor de neón para la caja
             ctx.shadowColor = "rgba(0, 255, 255, 0.7)";
             ctx.shadowBlur = 15 * escala;
 
-            // Fondo semitransparente oscuro para que destaque el texto
             ctx.fillStyle = "rgba(7, 12, 16, 0.85)";
             ctx.fillRect(xPlaca, yPlaca, anchoPlaca, altoPlaca);
 
-            // Marco de neón celeste brillante
             ctx.strokeStyle = "#00ffff";
             ctx.lineWidth = 3 * escala;
             ctx.strokeRect(xPlaca, yPlaca, anchoPlaca, altoPlaca);
 
-            // Textos organizados dentro de la placa
             ctx.textAlign = "left";
             const margenTextoX = xPlaca + (20 * escala);
 
-            // Título del auspiciante
             ctx.fillStyle = "#ffffff";
             ctx.font = `bold ${Math.round(18 * escala)}px 'Orbitron', sans-serif`;
             ctx.fillText("★ AUSPICIA: MIRADORES DEL BOSQUE ★", margenTextoX, yPlaca + (26 * escala));
 
-            // Dirección
             ctx.fillStyle = "#00ffff";
             ctx.font = `bold ${Math.round(15 * escala)}px 'Courier New', monospace`;
             ctx.fillText("📍 Mercedes Sosa (ex Roca) esq. HUDSON, Mar de las Pampas", margenTextoX, yPlaca + (52 * escala));
 
-            // Teléfonos y Email
             ctx.fillStyle = "#a5f3fc";
             ctx.font = `bold ${Math.round(14 * escala)}px 'Courier New', monospace`;
             ctx.fillText("📞 +54 2255 45 2147 / +54 9 2255 50 8932   ✉️ info@miradoresdelbosque.com.ar", margenTextoX, yPlaca + (78 * escala));
@@ -366,8 +375,6 @@
             enlace.href = canvas.toDataURL('image/jpeg', 0.98);
             enlace.click();
         }
-
-        window.onload = cargarVidrieraAutomatica;
     </script>
 
 </body>
